@@ -5,7 +5,6 @@ import sqlite3
 from datetime import datetime
 import threading
 import time
-import random
 
 app = FastAPI()
 
@@ -48,7 +47,7 @@ def run_bets_logic():
     for bet in all_odds:
         edge = bet["probability"] - 1 / bet["odds"]
         stake = 10.0
-        result = "SHADOW"
+        result = "OPEN"
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         cursor.execute(
             "INSERT INTO bets (timestamp, market, odds, probability, edge, stake, result) VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -71,7 +70,6 @@ def start_background_tasks():
 # Routes
 @app.get("/")
 def read_root(request: Request):
-    # Redirect root to dashboard or show a message
     return templates.TemplateResponse("bets.html", {"request": request, "bets": []})
 
 @app.get("/bets")
@@ -85,3 +83,25 @@ def dashboard(request: Request):
     cursor.execute("SELECT * FROM bets ORDER BY id DESC")
     bets = cursor.fetchall()
     return templates.TemplateResponse("bets.html", {"request": request, "bets": bets})
+
+# ====== NEW API ENDPOINTS ======
+@app.get("/api/bets")
+def api_bets():
+    cursor.execute("SELECT * FROM bets ORDER BY id DESC")
+    bets = cursor.fetchall()
+    return {"bets": bets}
+
+@app.get("/api/kpis")
+def api_kpis():
+    cursor.execute("SELECT SUM(stake) as total_stake, SUM(edge) as total_edge FROM bets")
+    row = cursor.fetchone()
+    bankroll = 1000  # dummy
+    roi = round((row[1] or 0) * 100, 2)
+    clv = round((row[1] or 0), 2)
+    turnover = round((row[0] or 0), 2)
+    return {
+        "bankroll": bankroll,
+        "roi": roi,
+        "clv": clv,
+        "turnover": turnover
+    }
