@@ -1,107 +1,34 @@
+# main.py
 from fastapi import FastAPI, Request
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import JSONResponse
-import sqlite3
-from datetime import datetime
-import threading
-import time
+from fastapi.responses import HTMLResponse, StreamingResponse
+import io, csv, os
 
 app = FastAPI()
 
-# Database
-conn = sqlite3.connect("bets.db", check_same_thread=False)
-cursor = conn.cursor()
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS bets (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    timestamp TEXT,
-    market TEXT,
-    odds REAL,
-    probability REAL,
-    edge REAL,
-    stake REAL,
-    result TEXT
-)
-""")
-conn.commit()
+# Templates folder path (relative to this file)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
-# Templates
-templates = Jinja2Templates(directory="templates")
+# Serve the dashboard (expects templates/bets.html to exist)
+@app.get("/", response_class=HTMLResponse)
+async def dashboard(request: Request):
+    return templates.TemplateResponse("bets.html", {"request": request})
 
-# Dummy endpoints
-def dummy_ps3838():
-    return [
-        {"market": "TeamA vs TeamB", "odds": 2.0, "probability": 0.55},
-        {"market": "TeamC vs TeamD", "odds": 1.8, "probability": 0.6}
-    ]
+# Small CSV export endpoint (safe placeholder)
+@app.get("/export/csv")
+async def export_csv():
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["ID","Timestamp","Sport","Market","Placed Odds","Closing Odds","CLV %","Probability","Edge %","Stake","Result"])
+    # Add a sample row so the endpoint returns a file even if frontend handles CSV itself
+    writer.writerow([1, "now", "Football", "Sample Market", "2.10", "2.00", "-4.76", "0.50", "2.00", "50", "Won"])
+    output.seek(0)
+    return StreamingResponse(output, media_type="text/csv",
+                             headers={"Content-Disposition": "attachment; filename=bets.csv"})
 
-def dummy_asianodds():
-    return [
-        {"market": "TeamG vs TeamH", "odds": 2.1, "probability": 0.52},
-        {"market": "TeamI vs TeamJ", "odds": 1.9, "probability": 0.58}
-    ]
-
-# Function to log bets
-def run_bets_logic():
-    all_odds = dummy_ps3838() + dummy_asianodds()
-    for bet in all_odds:
-        edge = bet["probability"] - 1 / bet["odds"]
-        stake = 10.0
-        result = "OPEN"
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        cursor.execute(
-            "INSERT INTO bets (timestamp, market, odds, probability, edge, stake, result) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (timestamp, bet["market"], bet["odds"], bet["probability"], edge, stake, result)
-        )
-        conn.commit()
-
-# Background thread function
-def auto_run_bets():
-    while True:
-        run_bets_logic()
-        time.sleep(120)  # 2 minutes
-
-# Start background thread on app startup
-@app.on_event("startup")
-def start_background_tasks():
-    thread = threading.Thread(target=auto_run_bets, daemon=True)
-    thread.start()
-
-# Routes
-@app.get("/")
-def read_root(request: Request):
-    return templates.TemplateResponse("bets.html", {"request": request, "bets": []})
-
-@app.get("/bets")
-def get_bets():
-    cursor.execute("SELECT * FROM bets ORDER BY id DESC")
-    bets = cursor.fetchall()
-    return JSONResponse(bets)
-
-@app.get("/dashboard")
-def dashboard(request: Request):
-    cursor.execute("SELECT * FROM bets ORDER BY id DESC")
-    bets = cursor.fetchall()
-    return templates.TemplateResponse("bets.html", {"request": request, "bets": bets})
-
-# ====== NEW API ENDPOINTS ======
-@app.get("/api/bets")
-def api_bets():
-    cursor.execute("SELECT * FROM bets ORDER BY id DESC")
-    bets = cursor.fetchall()
-    return {"bets": bets}
-
-@app.get("/api/kpis")
-def api_kpis():
-    cursor.execute("SELECT SUM(stake) as total_stake, SUM(edge) as total_edge FROM bets")
-    row = cursor.fetchone()
-    bankroll = 1000  # dummy
-    roi = round((row[1] or 0) * 100, 2)
-    clv = round((row[1] or 0), 2)
-    turnover = round((row[0] or 0), 2)
-    return {
-        "bankroll": bankroll,
-        "roi": roi,
-        "clv": clv,
-        "turnover": turnover
-    }
+# Allow running by calling: python main.py
+if __name__ == "__main__":
+    # run with uvicorn programmatically so "python main.py" works for you
+    import uvicorn
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)

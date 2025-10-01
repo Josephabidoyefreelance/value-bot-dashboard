@@ -44,6 +44,37 @@
         transform: scale(1.05);
       }
 
+      .kpis {
+        display: flex;
+        justify-content: space-around;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      .kpi {
+        background: #1e1e1e;
+        padding: 15px;
+        border-radius: 10px;
+        text-align: center;
+        min-width: 150px;
+        transition: background 0.3s, transform 0.3s;
+      }
+      .kpi:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+      }
+      body.light .kpi {
+        background: #fff;
+      }
+      .kpi h3 {
+        margin: 0;
+        font-size: 1.2rem;
+      }
+      .kpi p {
+        margin: 5px 0 0;
+        font-size: 1rem;
+      }
+
       .charts {
         display: flex;
         justify-content: space-between;
@@ -68,10 +99,32 @@
         background: #fff;
       }
 
+      .filters {
+        margin: 15px 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+      }
+      .filters select,
+      .filters input {
+        padding: 6px;
+        border-radius: 5px;
+        border: 1px solid #555;
+      }
+      .filters button {
+        padding: 6px 12px;
+        border-radius: 5px;
+        border: none;
+        background: #4caf50;
+        color: white;
+        cursor: pointer;
+      }
+
       table {
         width: 100%;
         border-collapse: collapse;
-        margin-top: 20px;
+        margin-top: 10px;
       }
       th,
       td {
@@ -79,7 +132,7 @@
         padding: 6px;
         text-align: center;
         transition: background 0.3s;
-        font-size: 0.9rem;
+        font-size: 0.85rem;
       }
       th {
         background: #333;
@@ -96,33 +149,96 @@
         background: #ddd;
       }
 
-      @media (max-width: 1000px) {
-        .chart-container {
-          flex: 1 1 100%;
-          height: 200px;
-        }
+      .status-open {
+        color: #2196f3;
+        font-weight: bold;
+      }
+      .status-won {
+        color: #4caf50;
+        font-weight: bold;
+      }
+      .status-lost {
+        color: #f44336;
+        font-weight: bold;
+      }
+      .status-void {
+        color: orange;
+        font-weight: bold;
+      }
+
+      .errors {
+        margin-top: 20px;
+        padding: 10px;
+        background: #1e1e1e;
+        border-radius: 10px;
+      }
+      body.light .errors {
+        background: #fff;
       }
     </style>
   </head>
   <body>
+    <h1>Luc Habaraken Betting Dashboard</h1>
+    <button class="theme-toggle" onclick="toggleTheme()">
+      Toggle Light/Dark
+    </button>
+
+    <!-- KPIs -->
+    <div class="kpis">
+      <div class="kpi">
+        <h3>Bankroll</h3>
+        <p id="bankroll">0</p>
+      </div>
+      <div class="kpi">
+        <h3>ROI %</h3>
+        <p id="roi">0%</p>
+      </div>
+      <div class="kpi">
+        <h3>CLV %</h3>
+        <p id="clv">0%</p>
+      </div>
+      <div class="kpi">
+        <h3>Turnover</h3>
+        <p id="turnover">0</p>
+      </div>
+    </div>
+
+    <!-- Charts -->
     <div class="charts">
       <div class="chart-container"><canvas id="roiChart"></canvas></div>
       <div class="chart-container"><canvas id="bankrollChart"></canvas></div>
       <div class="chart-container"><canvas id="edgePieChart"></canvas></div>
     </div>
 
-    <h1>Luc Habaraken Betting Dashboard</h1>
-    <button class="theme-toggle" onclick="toggleTheme()">
-      Toggle Light/Dark
-    </button>
+    <!-- Filters -->
+    <div class="filters">
+      <select id="sportFilter">
+        <option value="">All Sports</option>
+        <option value="Football">Football</option>
+        <option value="Tennis">Tennis</option>
+      </select>
+      <select id="statusFilter">
+        <option value="">All Status</option>
+        <option value="Open">Open</option>
+        <option value="Won">Won</option>
+        <option value="Lost">Lost</option>
+        <option value="Void">Void</option>
+      </select>
+      <input type="number" id="minEdgeFilter" placeholder="Min Edge %" />
+      <button onclick="exportCSV()">Export CSV</button>
+    </div>
 
+    <!-- Bets Table -->
     <table>
       <thead>
         <tr>
           <th>ID</th>
           <th>Timestamp</th>
+          <th>Sport</th>
           <th>Market</th>
-          <th>Odds</th>
+          <th>Placed Odds</th>
+          <th>Closing Odds</th>
+          <th>CLV %</th>
           <th>Probability</th>
           <th>Edge</th>
           <th>Stake</th>
@@ -132,93 +248,123 @@
       <tbody id="betsTable"></tbody>
     </table>
 
+    <!-- Error Logs -->
+    <div class="errors">
+      <h3>Error Logs</h3>
+      <ul id="errorLogs"></ul>
+    </div>
+
     <script>
       let roiChart, bankrollChart, edgePieChart;
-      let cumulativeBankroll = 0;
+      let bankroll = 1000;
+      let turnover = 0;
+      let totalBets = 0;
+      let bets = [];
 
-      async function fetchBets() {
-        try {
-          const res = await fetch("/bets");
-          const bets = await res.json();
-          const tableBody = document.getElementById("betsTable");
-          tableBody.innerHTML = "";
+      function randomBet() {
+        const sports = ["Football", "Tennis"];
+        const statuses = ["Open", "Won", "Lost", "Void"];
+        const sport = sports[Math.floor(Math.random() * sports.length)];
+        const id = totalBets + 1;
+        const timestamp = new Date().toLocaleTimeString();
+        const market = sport + " Match";
+        const placedOdds = (Math.random() * 3 + 1).toFixed(2);
+        const closingOdds = (Math.random() * 3 + 1).toFixed(2);
+        const clv = (((closingOdds - placedOdds) / placedOdds) * 100).toFixed(
+          2
+        );
+        const probability = (Math.random() * 0.5 + 0.25).toFixed(2);
+        const edge = (Math.random() * 0.1).toFixed(2);
+        const stake = (Math.random() * 100 + 10).toFixed(2);
+        const status = statuses[Math.floor(Math.random() * statuses.length)];
 
-          const labels = [];
-          const roiData = [];
-          const bankrollData = [];
-          const edgeData = [];
-          const edgeLabels = [];
-
-          cumulativeBankroll = 0; // reset for refresh
-
-          bets.forEach((bet) => {
-            const [
-              id,
-              timestamp,
-              market,
-              odds,
-              probability,
-              edge,
-              stake,
-              result,
-            ] = bet;
-            tableBody.innerHTML += `
-            <tr>
-              <td>${id}</td>
-              <td>${timestamp}</td>
-              <td>${market}</td>
-              <td>${odds}</td>
-              <td>${probability}</td>
-              <td>${(edge * 100).toFixed(2)}%</td>
-              <td>${stake}</td>
-              <td>${result}</td>
-            </tr>
-          `;
-
-            labels.push(market);
-            const pnl =
-              (odds * stake - stake) * probability - stake * (1 - probability);
-            cumulativeBankroll += pnl;
-            roiData.push(((pnl / stake) * 100).toFixed(2));
-            bankrollData.push(cumulativeBankroll.toFixed(2));
-            edgeData.push((edge * 100).toFixed(2));
-            edgeLabels.push(market);
-          });
-
-          updateCharts(labels, roiData, bankrollData, edgeData, edgeLabels);
-        } catch (e) {
-          console.error("Error fetching bets:", e);
-        }
+        return {
+          id,
+          timestamp,
+          sport,
+          market,
+          placedOdds,
+          closingOdds,
+          clv,
+          probability,
+          edge,
+          stake,
+          status,
+        };
       }
 
-      function updateCharts(
-        labels,
-        roiData,
-        bankrollData,
-        edgeData,
-        edgeLabels
-      ) {
+      function addBet() {
+        const bet = randomBet();
+        bets.push(bet);
+        totalBets++;
+        updateTable();
+        updateKPIs();
+        updateCharts();
+      }
+
+      function updateTable() {
+        const tableBody = document.getElementById("betsTable");
+        tableBody.innerHTML = "";
+        bets.forEach((bet) => {
+          tableBody.innerHTML += `
+            <tr>
+              <td>${bet.id}</td>
+              <td>${bet.timestamp}</td>
+              <td>${bet.sport}</td>
+              <td>${bet.market}</td>
+              <td>${bet.placedOdds}</td>
+              <td>${bet.closingOdds}</td>
+              <td>${bet.clv}%</td>
+              <td>${(bet.probability * 100).toFixed(0)}%</td>
+              <td>${(bet.edge * 100).toFixed(2)}%</td>
+              <td>${bet.stake}</td>
+              <td class="status-${bet.status.toLowerCase()}">${bet.status}</td>
+            </tr>
+          `;
+        });
+      }
+
+      function updateKPIs() {
+        turnover = bets.reduce((sum, b) => sum + parseFloat(b.stake), 0);
+        bankroll =
+          1000 +
+          bets.reduce((sum, b) => {
+            if (b.status === "Won") return sum + b.stake * (b.placedOdds - 1);
+            if (b.status === "Lost") return sum - b.stake;
+            return sum;
+          }, 0);
+        const roi = (((bankroll - 1000) / turnover) * 100).toFixed(2);
+        const avgCLV = (
+          bets.reduce((sum, b) => sum + parseFloat(b.clv), 0) / bets.length
+        ).toFixed(2);
+
+        document.getElementById("bankroll").textContent = bankroll.toFixed(2);
+        document.getElementById("roi").textContent = roi + "%";
+        document.getElementById("clv").textContent = avgCLV + "%";
+        document.getElementById("turnover").textContent = turnover.toFixed(2);
+      }
+
+      function updateCharts() {
+        const labels = bets.map((b) => b.id);
+        const roiData = bets.map((b, i) =>
+          (((bankroll - 1000) / turnover) * 100).toFixed(2)
+        );
+        const bankrollData = bets.map((b, i) => bankroll.toFixed(2));
+        const edgeData = bets.map((b) => (b.edge * 100).toFixed(2));
+        const edgeLabels = bets.map((b) => b.market);
+
         const commonOptions = {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: {
-            legend: { labels: { color: getColor() } },
-            tooltip: { mode: "index", intersect: false },
-          },
+          plugins: { legend: { labels: { color: getColor() } } },
           scales: {
             x: { ticks: { color: getColor() } },
             y: { ticks: { color: getColor() } },
           },
         };
 
-        function getColor() {
-          return document.body.classList.contains("light") ? "#222" : "#eee";
-        }
-
-        // ROI Chart
         if (!roiChart) {
-          const ctxRoi = document.getElementById("roiChart").getContext("2d");
-          roiChart = new Chart(ctxRoi, {
+          roiChart = new Chart(document.getElementById("roiChart"), {
             type: "line",
             data: {
               labels,
@@ -227,7 +373,6 @@
                   label: "ROI %",
                   data: roiData,
                   borderColor: "#4caf50",
-                  backgroundColor: "#4caf5070",
                   fill: true,
                 },
               ],
@@ -240,12 +385,8 @@
           roiChart.update();
         }
 
-        // Bankroll Chart
         if (!bankrollChart) {
-          const ctxBank = document
-            .getElementById("bankrollChart")
-            .getContext("2d");
-          bankrollChart = new Chart(ctxBank, {
+          bankrollChart = new Chart(document.getElementById("bankrollChart"), {
             type: "line",
             data: {
               labels,
@@ -254,7 +395,6 @@
                   label: "Bankroll",
                   data: bankrollData,
                   borderColor: "#2196f3",
-                  backgroundColor: "#2196f370",
                   fill: true,
                 },
               ],
@@ -267,12 +407,8 @@
           bankrollChart.update();
         }
 
-        // Edge Pie Chart with hover percentages
         if (!edgePieChart) {
-          const ctxPie = document
-            .getElementById("edgePieChart")
-            .getContext("2d");
-          edgePieChart = new Chart(ctxPie, {
+          edgePieChart = new Chart(document.getElementById("edgePieChart"), {
             type: "pie",
             data: {
               labels: edgeLabels,
@@ -284,20 +420,7 @@
                 },
               ],
             },
-            options: {
-              plugins: {
-                legend: { labels: { color: getColor() } },
-                tooltip: {
-                  callbacks: {
-                    label: function (context) {
-                      let label = context.label || "";
-                      let value = context.raw;
-                      return label + ": " + value + "%";
-                    },
-                  },
-                },
-              },
-            },
+            options: { plugins: { legend: { labels: { color: getColor() } } } },
           });
         } else {
           edgePieChart.data.labels = edgeLabels;
@@ -306,16 +429,37 @@
         }
       }
 
+      function exportCSV() {
+        let csv =
+          "ID,Timestamp,Sport,Market,Placed Odds,Closing Odds,CLV %,Probability,Edge %,Stake,Result\n";
+        bets.forEach((b) => {
+          csv += `${b.id},${b.timestamp},${b.sport},${b.market},${
+            b.placedOdds
+          },${b.closingOdds},${b.clv},${(b.probability * 100).toFixed(0)},${(
+            b.edge * 100
+          ).toFixed(2)},${b.stake},${b.status}\n`;
+        });
+        const blob = new Blob([csv], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "bets.csv";
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      function getColor() {
+        return document.body.classList.contains("light") ? "#222" : "#eee";
+      }
       function randomColor() {
         return `hsl(${Math.floor(Math.random() * 360)}, 70%, 50%)`;
       }
       function toggleTheme() {
         document.body.classList.toggle("light");
-        fetchBets();
       }
 
-      fetchBets();
-      setInterval(fetchBets, 120000); // auto refresh every 2 minutes
+      // Start simulation
+      setInterval(addBet, 2000);
     </script>
   </body>
 </html>
