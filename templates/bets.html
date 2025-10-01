@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Luc Habaraken Betting Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #121212;
+        color: #eee;
+        margin: 0;
+        padding: 20px;
+        transition: background 0.3s, color 0.3s;
+      }
+      body.light {
+        background: #f4f4f4;
+        color: #222;
+      }
+
+      h1 {
+        text-align: center;
+        margin: 10px 0;
+        transition: color 0.3s;
+      }
+      h1:hover {
+        color: #4caf50;
+        cursor: pointer;
+      }
+
+      .theme-toggle {
+        display: block;
+        margin: 0 auto 20px auto;
+        padding: 10px 15px;
+        background: #2196f3;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background 0.3s, transform 0.2s;
+      }
+      .theme-toggle:hover {
+        background: #1976d2;
+        transform: scale(1.05);
+      }
+
+      .charts {
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 15px;
+        margin-bottom: 20px;
+      }
+      .chart-container {
+        flex: 1 1 30%;
+        min-width: 180px;
+        height: 220px;
+        padding: 10px;
+        border-radius: 10px;
+        background: #1e1e1e;
+        transition: background 0.3s, transform 0.3s;
+      }
+      .chart-container:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+      }
+      body.light .chart-container {
+        background: #fff;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+      }
+      th,
+      td {
+        border: 1px solid #555;
+        padding: 6px;
+        text-align: center;
+        transition: background 0.3s;
+        font-size: 0.9rem;
+      }
+      th {
+        background: #333;
+      }
+      tr:hover {
+        background: #444;
+        cursor: pointer;
+      }
+      body.light th {
+        background: #ccc;
+        border-color: #aaa;
+      }
+      body.light tr:hover {
+        background: #ddd;
+      }
+
+      @media (max-width: 1000px) {
+        .chart-container {
+          flex: 1 1 100%;
+          height: 200px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="charts">
+      <div class="chart-container"><canvas id="roiChart"></canvas></div>
+      <div class="chart-container"><canvas id="bankrollChart"></canvas></div>
+      <div class="chart-container"><canvas id="edgePieChart"></canvas></div>
+    </div>
+
+    <h1>Luc Habaraken Betting Dashboard</h1>
+    <button class="theme-toggle" onclick="toggleTheme()">
+      Toggle Light/Dark
+    </button>
+
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Timestamp</th>
+          <th>Market</th>
+          <th>Odds</th>
+          <th>Probability</th>
+          <th>Edge</th>
+          <th>Stake</th>
+          <th>Result</th>
+        </tr>
+      </thead>
+      <tbody id="betsTable"></tbody>
+    </table>
+
+    <script>
+      let roiChart, bankrollChart, edgePieChart;
+      let cumulativeBankroll = 0;
+
+      async function fetchBets() {
+        try {
+          const res = await fetch("/bets");
+          const bets = await res.json();
+          const tableBody = document.getElementById("betsTable");
+          tableBody.innerHTML = "";
+
+          const labels = [];
+          const roiData = [];
+          const bankrollData = [];
+          const edgeData = [];
+          const edgeLabels = [];
+
+          cumulativeBankroll = 0; // reset for refresh
+
+          bets.forEach((bet) => {
+            const [
+              id,
+              timestamp,
+              market,
+              odds,
+              probability,
+              edge,
+              stake,
+              result,
+            ] = bet;
+            tableBody.innerHTML += `
+            <tr>
+              <td>${id}</td>
+              <td>${timestamp}</td>
+              <td>${market}</td>
+              <td>${odds}</td>
+              <td>${probability}</td>
+              <td>${(edge * 100).toFixed(2)}%</td>
+              <td>${stake}</td>
+              <td>${result}</td>
+            </tr>
+          `;
+
+            labels.push(market);
+            const pnl =
+              (odds * stake - stake) * probability - stake * (1 - probability);
+            cumulativeBankroll += pnl;
+            roiData.push(((pnl / stake) * 100).toFixed(2));
+            bankrollData.push(cumulativeBankroll.toFixed(2));
+            edgeData.push((edge * 100).toFixed(2));
+            edgeLabels.push(market);
+          });
+
+          updateCharts(labels, roiData, bankrollData, edgeData, edgeLabels);
+        } catch (e) {
+          console.error("Error fetching bets:", e);
+        }
+      }
+
+      function updateCharts(
+        labels,
+        roiData,
+        bankrollData,
+        edgeData,
+        edgeLabels
+      ) {
+        const commonOptions = {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: getColor() } },
+            tooltip: { mode: "index", intersect: false },
+          },
+          scales: {
+            x: { ticks: { color: getColor() } },
+            y: { ticks: { color: getColor() } },
+          },
+        };
+
+        function getColor() {
+          return document.body.classList.contains("light") ? "#222" : "#eee";
+        }
+
+        // ROI Chart
+        if (!roiChart) {
+          const ctxRoi = document.getElementById("roiChart").getContext("2d");
+          roiChart = new Chart(ctxRoi, {
+            type: "line",
+            data: {
+              labels,
+              datasets: [
+                {
+                  label: "ROI %",
+                  data: roiData,
+                  borderColor: "#4caf50",
+                  backgroundColor: "#4caf5070",
+                  fill: true,
+                },
+              ],
+            },
+            options: commonOptions,
+          });
+        } else {
+          roiChart.data.labels = labels;
+          roiChart.data.datasets[0].data = roiData;
+          roiChart.update();
+        }
+
+        // Bankroll Chart
+        if (!bankrollChart) {
+          const ctxBank = document
+            .getElementById("bankrollChart")
+            .getContext("2d");
+          bankrollChart = new Chart(ctxBank, {
+            type: "line",
+            data: {
+              labels,
+              datasets: [
+                {
+                  label: "Bankroll",
+                  data: bankrollData,
+                  borderColor: "#2196f3",
+                  backgroundColor: "#2196f370",
+                  fill: true,
+                },
+              ],
+            },
+            options: commonOptions,
+          });
+        } else {
+          bankrollChart.data.labels = labels;
+          bankrollChart.data.datasets[0].data = bankrollData;
+          bankrollChart.update();
+        }
+
+        // Edge Pie Chart with hover percentages
+        if (!edgePieChart) {
+          const ctxPie = document
+            .getElementById("edgePieChart")
+            .getContext("2d");
+          edgePieChart = new Chart(ctxPie, {
+            type: "pie",
+            data: {
+              labels: edgeLabels,
+              datasets: [
+                {
+                  label: "Edge %",
+                  data: edgeData,
+                  backgroundColor: edgeLabels.map(() => randomColor()),
+                },
+              ],
+            },
+            options: {
+              plugins: {
+                legend: { labels: { color: getColor() } },
+                tooltip: {
+                  callbacks: {
+                    label: function (context) {
+                      let label = context.label || "";
+                      let value = context.raw;
+                      return label + ": " + value + "%";
+                    },
+                  },
+                },
+              },
+            },
+          });
+        } else {
+          edgePieChart.data.labels = edgeLabels;
+          edgePieChart.data.datasets[0].data = edgeData;
+          edgePieChart.update();
+        }
+      }
+
+      function randomColor() {
+        return `hsl(${Math.floor(Math.random() * 360)}, 70%, 50%)`;
+      }
+      function toggleTheme() {
+        document.body.classList.toggle("light");
+        fetchBets();
+      }
+
+      fetchBets();
+      setInterval(fetchBets, 120000); // auto refresh every 2 minutes
+    </script>
+  </body>
+</html>
