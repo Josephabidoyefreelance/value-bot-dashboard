@@ -1,16 +1,12 @@
-from fastapi import FastAPI
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, Request
+from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-import os
+from fastapi.responses import HTMLResponse
 
 app = FastAPI()
-
-# Serve static files (CSS/JS if you add any later)
-if not os.path.exists("static"):
-    os.mkdir("static")
+templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Serve bets.html
-@app.get("/")
-async def dashboard():
-    return FileResponse("templates/bets.html")
+@app.get("/bets.html", response_class=HTMLResponse)
+async def get_bets(request: Request):
+    return templates.TemplateResponse("bets.html", {"request": request})

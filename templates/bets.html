@@ -2,6 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Luc Habaraken Betting Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -11,7 +12,7 @@
         color: #eee;
         margin: 0;
         padding: 20px;
-        transition: background 0.3s, color 0.3s;
+        transition: 0.3s;
       }
       body.light {
         background: #f4f4f4;
@@ -20,46 +21,70 @@
       h1 {
         text-align: center;
         margin: 10px 0;
-        transition: color 0.3s, text-shadow 0.3s;
       }
-      h1:hover {
-        color: #4caf50;
-        text-shadow: 0 0 10px #4caf50;
+      button {
+        padding: 8px 14px;
+        margin: 5px;
+        border: none;
+        border-radius: 6px;
         cursor: pointer;
+        font-weight: bold;
+        transition: all 0.2s;
+      }
+      button:hover {
+        transform: scale(1.05);
+        box-shadow: 0 0 8px #4caf50;
       }
       .theme-toggle {
-        display: block;
-        margin: 0 auto 20px auto;
-        padding: 10px 15px;
         background: #2196f3;
-        color: #fff;
-        border: none;
+        color: white;
+      }
+      .shadow-toggle {
+        background: #f44336;
+        color: white;
+      }
+      .shadow-toggle.active {
+        opacity: 0.5;
+      }
+
+      .filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin: 10px 0;
+        align-items: center;
+      }
+      .filters select,
+      .filters input {
+        padding: 5px;
         border-radius: 5px;
+        border: 1px solid #555;
+      }
+      .filters button {
+        padding: 5px 10px;
+        border-radius: 5px;
+        background: #4caf50;
+        color: white;
+        border: none;
         cursor: pointer;
-        transition: background 0.3s, transform 0.2s, box-shadow 0.3s;
       }
-      .theme-toggle:hover {
-        background: #1976d2;
-        transform: scale(1.05);
-        box-shadow: 0 0 15px #2196f3;
-      }
+
       .kpis {
         display: flex;
         justify-content: space-around;
-        margin-bottom: 20px;
         flex-wrap: wrap;
         gap: 10px;
+        margin-bottom: 20px;
       }
       .kpi {
         background: #1e1e1e;
         padding: 15px;
         border-radius: 10px;
         text-align: center;
-        min-width: 150px;
-        transition: background 0.3s, transform 0.3s, box-shadow 0.3s;
+        min-width: 130px;
+        transition: 0.3s;
       }
       .kpi:hover {
-        transform: translateY(-5px);
         box-shadow: 0 0 15px #4caf50;
       }
       body.light .kpi {
@@ -67,66 +92,51 @@
       }
       .kpi h3 {
         margin: 0;
-        font-size: 1.2rem;
+        font-size: 1.1rem;
       }
       .kpi p {
         margin: 5px 0 0;
-        font-size: 1rem;
+        font-size: 0.95rem;
       }
+      .pulse {
+        animation: pulseGlow 0.6s ease;
+      }
+      @keyframes pulseGlow {
+        0% {
+          box-shadow: 0 0 5px #4caf50;
+        }
+        50% {
+          box-shadow: 0 0 15px #4caf50;
+        }
+        100% {
+          box-shadow: 0 0 5px #4caf50;
+        }
+      }
+
       .charts {
         display: flex;
-        justify-content: space-between;
-        flex-wrap: wrap;
         gap: 15px;
+        flex-wrap: wrap;
         margin-bottom: 20px;
+        justify-content: center;
       }
       .chart-container {
-        flex: 1 1 30%;
-        min-width: 180px;
-        height: 220px;
+        width: 100%;
+        max-width: 400px;
+        height: 200px;
         padding: 10px;
         border-radius: 10px;
         background: #1e1e1e;
-        transition: background 0.3s, transform 0.3s, box-shadow 0.3s;
+        transition: 0.3s;
       }
       .chart-container:hover {
         transform: translateY(-5px);
-        box-shadow: 0 0 20px #2196f3;
+        box-shadow: 0 0 12px #2196f3;
       }
       body.light .chart-container {
         background: #fff;
       }
-      .filters {
-        margin: 15px 0;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        align-items: center;
-      }
-      .filters select,
-      .filters input {
-        padding: 6px;
-        border-radius: 5px;
-        border: 1px solid #555;
-        transition: box-shadow 0.3s;
-      }
-      .filters select:hover,
-      .filters input:hover {
-        box-shadow: 0 0 8px #4caf50;
-      }
-      .filters button {
-        padding: 6px 12px;
-        border-radius: 5px;
-        border: none;
-        background: #4caf50;
-        color: white;
-        cursor: pointer;
-        transition: box-shadow 0.3s, transform 0.2s;
-      }
-      .filters button:hover {
-        box-shadow: 0 0 15px #4caf50;
-        transform: scale(1.05);
-      }
+
       table {
         width: 100%;
         border-collapse: collapse;
@@ -135,25 +145,21 @@
       th,
       td {
         border: 1px solid #555;
-        padding: 6px;
+        padding: 5px;
         text-align: center;
-        transition: background 0.3s, box-shadow 0.3s;
-        font-size: 0.85rem;
+        font-size: 0.8rem;
+        transition: 0.3s;
       }
       th {
         background: #333;
-      }
-      tr:hover {
-        background: #444;
-        cursor: pointer;
-        box-shadow: 0 0 10px #2196f3;
       }
       body.light th {
         background: #ccc;
         border-color: #aaa;
       }
-      body.light tr:hover {
-        background: #ddd;
+      tr:hover {
+        cursor: pointer;
+        box-shadow: 0 0 12px #4caf50;
       }
       .status-open {
         color: #2196f3;
@@ -171,26 +177,73 @@
         color: orange;
         font-weight: bold;
       }
+
       .errors {
         margin-top: 20px;
         padding: 10px;
         background: #1e1e1e;
         border-radius: 10px;
-        transition: box-shadow 0.3s;
+        max-height: 150px;
+        overflow-y: auto;
+        transition: 0.3s;
       }
-      .errors:hover {
-        box-shadow: 0 0 15px red;
+      .errors li {
+        transition: 0.3s;
+        padding: 2px 5px;
+      }
+      .errors li:hover {
+        box-shadow: 0 0 10px #f44336;
       }
       body.light .errors {
         background: #fff;
+      }
+
+      @media (max-width: 768px) {
+        .kpis {
+          flex-direction: column;
+          align-items: center;
+        }
+        .charts {
+          flex-direction: column;
+          align-items: center;
+        }
       }
     </style>
   </head>
   <body>
     <h1>Luc Habaraken Betting Dashboard</h1>
-    <button class="theme-toggle" onclick="toggleTheme()">
-      Toggle Light/Dark
-    </button>
+
+    <div class="filters">
+      <button class="theme-toggle" onclick="toggleTheme()">
+        Toggle Light/Dark
+      </button>
+      <button id="shadowBtn" class="shadow-toggle" onclick="toggleShadow()">
+        Demo Mode
+      </button>
+      <select id="sportFilter" onchange="refreshDashboard()">
+        <option value="">All Sports</option>
+        <option value="Football">Football</option>
+        <option value="Tennis">Tennis</option>
+      </select>
+      <select id="statusFilter" onchange="refreshDashboard()">
+        <option value="">All Status</option>
+        <option value="Open">Open</option>
+        <option value="Won">Won</option>
+        <option value="Lost">Lost</option>
+        <option value="Void">Void</option>
+      </select>
+      <input
+        type="number"
+        id="minEdgeFilter"
+        placeholder="Min Edge %"
+        oninput="refreshDashboard()"
+      />
+      <select id="stakingMethod">
+        <option value="flat">Flat</option>
+        <option value="kelly">Kelly</option>
+      </select>
+      <button onclick="exportCSV()">Export CSV</button>
+    </div>
 
     <div class="kpis">
       <div class="kpi">
@@ -218,32 +271,6 @@
     <div class="charts">
       <div class="chart-container"><canvas id="roiChart"></canvas></div>
       <div class="chart-container"><canvas id="bankrollChart"></canvas></div>
-      <div class="chart-container"><canvas id="edgePieChart"></canvas></div>
-    </div>
-
-    <div class="filters">
-      <select id="sportFilter">
-        <option value="">All Sports</option>
-        <option value="Football">Football</option>
-        <option value="Tennis">Tennis</option>
-      </select>
-      <select id="statusFilter">
-        <option value="">All Status</option>
-        <option value="Open">Open</option>
-        <option value="Won">Won</option>
-        <option value="Lost">Lost</option>
-        <option value="Void">Void</option>
-      </select>
-      <input type="number" id="minEdgeFilter" placeholder="Min Edge %" />
-      <button onclick="exportCSV()">Export CSV</button>
-      <label><input type="checkbox" id="shadowToggle" /> Shadow Mode</label>
-      <label
-        >Staking:
-        <select id="stakingMethod">
-          <option value="flat">Flat</option>
-          <option value="kelly">Kelly</option>
-        </select>
-      </label>
     </div>
 
     <table>
@@ -271,258 +298,228 @@
     </div>
 
     <script>
-      let roiChart, bankrollChart, edgePieChart;
-      let bankroll = 1000,
-        turnover = 0,
+      // === State ===
+      let bets = [],
+        bankroll = 1000,
+        peakBankroll = 1000,
         totalBets = 0,
-        bets = [],
-        peakBankroll = 1000;
+        shadowMode = true,
+        intervalId;
+      const sportsList = ["Football", "Tennis"];
+      const resultsList = ["Open", "Won", "Lost", "Void"];
 
+      // === Random Bet Generator ===
       function randomBet() {
-        try {
-          const sports = ["Football", "Tennis"];
-          const statuses = ["Open", "Won", "Lost", "Void"];
-          const sport = sports[Math.floor(Math.random() * sports.length)];
-          const status = statuses[Math.floor(Math.random() * statuses.length)];
-          const id = totalBets + 1;
-          const timestamp = new Date().toLocaleTimeString();
-          const market = sport + " Match";
-          const placedOdds = (Math.random() * 3 + 1).toFixed(2);
-          const closingOdds = (Math.random() * 3 + 1).toFixed(2);
-          const clv = (((closingOdds - placedOdds) / placedOdds) * 100).toFixed(
-            2
-          );
-          const probability = (Math.random() * 0.5 + 0.25).toFixed(2);
-          const edge = (Math.random() * 0.1).toFixed(2);
-          let stake;
-          const method = document.getElementById("stakingMethod").value;
-          if (method === "flat") stake = 50; // flat stake
-          else stake = Math.max(10, ((bankroll * edge) / 1).toFixed(2)); // Kelly approx
-          totalBets++;
-          return {
-            id,
-            timestamp,
-            sport,
-            market,
-            placedOdds,
-            closingOdds,
-            clv,
-            probability,
-            edge,
-            stake,
-            status,
-          };
-        } catch (e) {
-          logError("Error generating bet: " + e);
-        }
+        const sport = sportsList[Math.floor(Math.random() * sportsList.length)];
+        const result =
+          resultsList[Math.floor(Math.random() * resultsList.length)];
+        const id = ++totalBets;
+        const timestamp = new Date().toLocaleTimeString();
+        const market = `${sport} Match`;
+        const placedOdds = (Math.random() * 3 + 1).toFixed(2);
+        const closingOdds = (Math.random() * 3 + 1).toFixed(2);
+        const clv = (((closingOdds - placedOdds) / placedOdds) * 100).toFixed(
+          2
+        );
+        const probability = (Math.random() * 0.5 + 0.25).toFixed(2);
+        const edge = (Math.random() * 10).toFixed(2);
+        const stake = 10 + Math.floor(Math.random() * 50);
+        return {
+          id,
+          timestamp,
+          sport,
+          match: market,
+          placedOdds,
+          closingOdds,
+          clv,
+          probability,
+          edge,
+          bet_amount: stake,
+          result,
+        };
       }
 
-      function addBet() {
-        try {
-          const shadow = document.getElementById("shadowToggle").checked;
-          const bet = randomBet();
-          bets.push(bet);
-          if (!shadow) updateBankroll(bet);
-          updateTable();
-          updateKPIs();
-          updateCharts();
-        } catch (e) {
-          logError("Error adding bet: " + e);
-        }
-      }
-
-      function updateBankroll(bet) {
-        try {
-          if (bet.status === "Won")
-            bankroll += bet.stake * (bet.placedOdds - 1);
-          else if (bet.status === "Lost") bankroll -= bet.stake;
-          if (bankroll > peakBankroll) peakBankroll = bankroll;
-        } catch (e) {
-          logError("Error updating bankroll: " + e);
-        }
-      }
-
-      function updateTable() {
-        try {
-          const tbody = document.getElementById("betsTable");
-          tbody.innerHTML = "";
-          const sportFilter = document.getElementById("sportFilter").value;
-          const statusFilter = document.getElementById("statusFilter").value;
-          const minEdge =
-            parseFloat(document.getElementById("minEdgeFilter").value) || 0;
-          const filtered = bets.filter(
-            (b) =>
-              (sportFilter === "" || b.sport === sportFilter) &&
-              (statusFilter === "" || b.status === statusFilter) &&
-              b.edge * 100 >= minEdge
-          );
-          filtered.forEach((b) => {
-            tbody.innerHTML += `<tr class="status-${b.status.toLowerCase()}">
-            <td>${b.id}</td><td>${b.timestamp}</td><td>${b.sport}</td><td>${
-              b.market
-            }</td>
-            <td>${b.placedOdds}</td><td>${b.closingOdds}</td><td>${b.clv}%</td>
-            <td>${(b.probability * 100).toFixed(0)}%</td><td>${(
-              b.edge * 100
-            ).toFixed(2)}%</td>
-            <td>${b.stake}</td>
-            <td class="status-${b.status.toLowerCase()}">${b.status}</td>
-          </tr>`;
-          });
-        } catch (e) {
-          logError("Error updating table: " + e);
-        }
-      }
-
-      function updateKPIs() {
-        try {
-          turnover = bets.reduce((s, b) => s + parseFloat(b.stake), 0);
-          const roi = (((bankroll - 1000) / turnover) * 100).toFixed(2);
-          const avgCLV = (
-            bets.reduce((s, b) => s + parseFloat(b.clv), 0) / bets.length || 0
-          ).toFixed(2);
-          const drawdown = (peakBankroll - bankroll).toFixed(2);
-          document.getElementById("bankroll").textContent = bankroll.toFixed(2);
-          document.getElementById("roi").textContent = roi + "%";
-          document.getElementById("clv").textContent = avgCLV + "%";
-          document.getElementById("turnover").textContent = turnover.toFixed(2);
-          document.getElementById("drawdown").textContent = drawdown;
-        } catch (e) {
-          logError("Error updating KPIs: " + e);
-        }
-      }
-
-      function updateCharts() {
-        try {
-          const labels = bets.map((b) => b.id);
-          const roiData = bets.map(() =>
-            (((bankroll - 1000) / turnover) * 100).toFixed(2)
-          );
-          const bankrollData = bets.map(() => bankroll.toFixed(2));
-          const edgeData = bets.map((b) => (b.edge * 100).toFixed(2));
-          const edgeLabels = bets.map((b) => b.market);
-          const commonOptions = {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { labels: { color: getColor() } } },
-            scales: {
-              x: { ticks: { color: getColor() } },
-              y: { ticks: { color: getColor() } },
-            },
-          };
-          if (!roiChart)
-            roiChart = new Chart(document.getElementById("roiChart"), {
-              type: "line",
-              data: {
-                labels,
-                datasets: [
-                  {
-                    label: "ROI %",
-                    data: roiData,
-                    borderColor: "#4caf50",
-                    fill: true,
-                  },
-                ],
-              },
-              options: commonOptions,
-            });
-          else {
-            roiChart.data.labels = labels;
-            roiChart.data.datasets[0].data = roiData;
-            roiChart.update();
-          }
-          if (!bankrollChart)
-            bankrollChart = new Chart(
-              document.getElementById("bankrollChart"),
-              {
-                type: "line",
-                data: {
-                  labels,
-                  datasets: [
-                    {
-                      label: "Bankroll",
-                      data: bankrollData,
-                      borderColor: "#2196f3",
-                      fill: true,
-                    },
-                  ],
-                },
-                options: commonOptions,
-              }
-            );
-          else {
-            bankrollChart.data.labels = labels;
-            bankrollChart.data.datasets[0].data = bankrollData;
-            bankrollChart.update();
-          }
-          if (!edgePieChart)
-            edgePieChart = new Chart(document.getElementById("edgePieChart"), {
-              type: "pie",
-              data: {
-                labels: edgeLabels,
-                datasets: [
-                  {
-                    label: "Edge %",
-                    data: edgeData,
-                    backgroundColor: edgeLabels.map(() => randomColor()),
-                  },
-                ],
-              },
-              options: {
-                plugins: { legend: { labels: { color: getColor() } } },
-              },
-            });
-          else {
-            edgePieChart.data.labels = edgeLabels;
-            edgePieChart.data.datasets[0].data = edgeData;
-            edgePieChart.update();
-          }
-        } catch (e) {
-          logError("Error updating charts: " + e);
-        }
-      }
-
-      function exportCSV() {
-        try {
-          let csv =
-            "ID,Timestamp,Sport,Market,Placed Odds,Closing Odds,CLV %,Probability,Edge %,Stake,Result\n";
-          bets.forEach((b) => {
-            csv += `${b.id},${b.timestamp},${b.sport},${b.market},${
-              b.placedOdds
-            },${b.closingOdds},${b.clv},${(b.probability * 100).toFixed(0)},${(
-              b.edge * 100
-            ).toFixed(2)},${b.stake},${b.status}\n`;
-          });
-          const blob = new Blob([csv], { type: "text/csv" });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = "bets.csv";
-          a.click();
-          URL.revokeObjectURL(url);
-        } catch (e) {
-          logError("Error exporting CSV: " + e);
-        }
-      }
-
-      function getColor() {
-        return document.body.classList.contains("light") ? "#222" : "#eee";
-      }
-      function randomColor() {
-        return `hsl(${Math.floor(Math.random() * 360)},70%,50%)`;
-      }
-      function toggleTheme() {
-        document.body.classList.toggle("light");
-      }
+      // === Error Logging ===
       function logError(msg) {
         const ul = document.getElementById("errorLogs");
         const li = document.createElement("li");
-        li.textContent = msg;
+        li.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        li.onmouseover = () => (li.style.boxShadow = "0 0 10px #f44336");
+        li.onmouseout = () => (li.style.boxShadow = "none");
         ul.appendChild(li);
+        ul.scrollTop = ul.scrollHeight;
       }
 
-      // Auto-generate a bet every 3 seconds
-      setInterval(addBet, 3000);
+      // === Theme & Demo Toggle ===
+      function toggleTheme() {
+        document.body.classList.toggle("light");
+      }
+      function toggleShadow() {
+        shadowMode = !shadowMode;
+        const btn = document.getElementById("shadowBtn");
+        btn.textContent = shadowMode ? "Demo Mode" : "Live Mode";
+        btn.classList.toggle("active");
+        if (shadowMode) startBets();
+        else stopBets();
+      }
+
+      // === Filters ===
+      function getFilteredBets() {
+        const sport = document.getElementById("sportFilter").value;
+        const status = document.getElementById("statusFilter").value;
+        const minEdge =
+          parseFloat(document.getElementById("minEdgeFilter").value) || 0;
+        return bets.filter(
+          (b) =>
+            (!sport || b.sport === sport) &&
+            (!status || b.result === status) &&
+            b.edge >= minEdge
+        );
+      }
+
+      // === Dashboard Refresh ===
+      let roiChart, bankrollChart;
+      function refreshDashboard() {
+        const filtered = getFilteredBets();
+        const tbody = document.getElementById("betsTable");
+        tbody.innerHTML = "";
+        filtered.forEach((b) => {
+          tbody.innerHTML += `<tr class="status-${b.result.toLowerCase()}">
+      <td>${b.id}</td><td>${b.timestamp}</td><td>${b.sport}</td><td>${
+            b.match
+          }</td>
+      <td>${b.placedOdds}</td><td>${b.closingOdds}</td><td>${b.clv}%</td>
+      <td>${(b.probability * 100).toFixed(0)}%</td><td>${b.edge}%</td>
+      <td>${b.bet_amount}</td><td class="status-${b.result.toLowerCase()}">${
+            b.result
+          }</td>
+    </tr>`;
+        });
+
+        const turnover = filtered.reduce(
+          (s, b) => s + parseFloat(b.bet_amount),
+          0
+        );
+        const roiVal = turnover
+          ? (((bankroll - 1000) / turnover) * 100).toFixed(2)
+          : 0;
+        const avgCLV = filtered.length
+          ? (
+              filtered.reduce((s, b) => s + parseFloat(b.clv), 0) /
+              filtered.length
+            ).toFixed(2)
+          : 0;
+        const drawdown = (peakBankroll - bankroll).toFixed(2);
+
+        ["bankroll", "roi", "clv", "turnover", "drawdown"].forEach((id) => {
+          const el = document.getElementById(id);
+          el.textContent =
+            { bankroll, roi: roiVal, clv: avgCLV, turnover, drawdown }[id] +
+            (id === "roi" || id === "clv" ? "%" : "");
+          el.classList.add("pulse");
+          setTimeout(() => el.classList.remove("pulse"), 500);
+        });
+
+        const labels = filtered.map((b) => b.id);
+        const roiData = filtered.map(() => roiVal);
+        const bankrollData = filtered.map(() => bankroll.toFixed(2));
+        const options = {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: "#eee" } } },
+          scales: {
+            x: { ticks: { color: "#eee" } },
+            y: { ticks: { color: "#eee" } },
+          },
+        };
+        if (!roiChart)
+          roiChart = new Chart(document.getElementById("roiChart"), {
+            type: "line",
+            data: {
+              labels,
+              datasets: [
+                {
+                  label: "ROI %",
+                  data: roiData,
+                  borderColor: "#4caf50",
+                  fill: true,
+                },
+              ],
+            },
+            options,
+          });
+        else {
+          roiChart.data.labels = labels;
+          roiChart.data.datasets[0].data = roiData;
+          roiChart.update();
+        }
+
+        if (!bankrollChart)
+          bankrollChart = new Chart(document.getElementById("bankrollChart"), {
+            type: "line",
+            data: {
+              labels,
+              datasets: [
+                {
+                  label: "Bankroll",
+                  data: bankrollData,
+                  borderColor: "#2196f3",
+                  fill: true,
+                },
+              ],
+            },
+            options,
+          });
+        else {
+          bankrollChart.data.labels = labels;
+          bankrollChart.data.datasets[0].data = bankrollData;
+          bankrollChart.update();
+        }
+      }
+
+      // === Export CSV ===
+      function exportCSV() {
+        let csv =
+          "ID,Timestamp,Sport,Market,Placed Odds,Closing Odds,CLV %,Probability,Edge,Stake,Result\n";
+        getFilteredBets().forEach((b) => {
+          csv += `${b.id},${b.timestamp},${b.sport},${b.match},${
+            b.placedOdds
+          },${b.closingOdds},${b.clv}%,${(b.probability * 100).toFixed(0)}%,${
+            b.edge
+          }%,${b.bet_amount},${b.result}\n`;
+        });
+        const blob = new Blob([csv], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "bets.csv";
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      // === Betting Interval ===
+      function generateBet() {
+        const newBet = randomBet();
+        bets.push(newBet);
+        if (newBet.result === "Won")
+          bankroll += newBet.bet_amount * (newBet.placedOdds - 1);
+        else if (newBet.result === "Lost") bankroll -= newBet.bet_amount;
+        if (bankroll > peakBankroll) peakBankroll = bankroll;
+        if (Math.random() < 0.3) logError(`Random error on bet ${newBet.id}`);
+        refreshDashboard();
+      }
+      function startBets() {
+        intervalId = setInterval(generateBet, 3000);
+      }
+      function stopBets() {
+        clearInterval(intervalId);
+      }
+
+      // === Init ===
+      document.addEventListener("DOMContentLoaded", () => {
+        startBets();
+        refreshDashboard();
+      });
     </script>
   </body>
 </html>

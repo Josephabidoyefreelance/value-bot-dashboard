@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Luc Habaraken Betting Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #121212;
+        color: #eee;
+        margin: 0;
+        padding: 20px;
+        transition: background 0.3s, color 0.3s;
+      }
+      body.light {
+        background: #f4f4f4;
+        color: #222;
+      }
+
+      h1 {
+        text-align: center;
+        margin: 10px 0;
+        transition: color 0.3s, text-shadow 0.3s;
+      }
+      h1:hover {
+        color: #4caf50;
+        text-shadow: 0 0 10px #4caf50;
+        cursor: pointer;
+      }
+
+      .theme-toggle,
+      .shadow-toggle {
+        display: block;
+        margin: 0 auto 20px auto;
+        padding: 10px 15px;
+        background: #2196f3;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background 0.3s, transform 0.2s, box-shadow 0.3s;
+      }
+      .theme-toggle:hover,
+      .shadow-toggle:hover {
+        background: #1976d2;
+        transform: scale(1.05);
+        box-shadow: 0 0 12px #2196f3;
+      }
+
+      .kpis {
+        display: flex;
+        justify-content: space-around;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+      .kpi {
+        background: #1e1e1e;
+        padding: 15px;
+        border-radius: 10px;
+        text-align: center;
+        min-width: 150px;
+        transition: transform 0.3s, box-shadow 0.3s;
+      }
+      .kpi:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0 15px #4caf50;
+      }
+      body.light .kpi {
+        background: #fff;
+      }
+      .kpi h3 {
+        margin: 0;
+        font-size: 1.2rem;
+      }
+      .kpi p {
+        margin: 5px 0 0;
+        font-size: 1rem;
+      }
+
+      .charts {
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 15px;
+        margin-bottom: 20px;
+      }
+      .chart-container {
+        flex: 1 1 30%;
+        min-width: 180px;
+        height: 220px;
+        padding: 10px;
+        border-radius: 10px;
+        background: #1e1e1e;
+        transition: transform 0.3s, box-shadow 0.3s;
+      }
+      .chart-container:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0 15px #2196f3;
+      }
+      body.light .chart-container {
+        background: #fff;
+      }
+
+      .filters {
+        margin: 15px 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+      }
+      .filters select,
+      .filters input {
+        padding: 6px;
+        border-radius: 5px;
+        border: 1px solid #555;
+      }
+      .filters button {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 5px;
+        background: #4caf50;
+        color: white;
+        cursor: pointer;
+        transition: box-shadow 0.3s;
+      }
+      .filters button:hover {
+        box-shadow: 0 0 12px #4caf50;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+      }
+      th,
+      td {
+        border: 1px solid #555;
+        padding: 6px;
+        text-align: center;
+        font-size: 0.85rem;
+        transition: background 0.3s;
+      }
+      th {
+        background: #333;
+      }
+      body.light th {
+        background: #ccc;
+        border-color: #aaa;
+      }
+      tr:hover {
+        background: #444;
+        box-shadow: 0 0 8px #2196f3 inset;
+        cursor: pointer;
+      }
+      body.light tr:hover {
+        background: #ddd;
+      }
+
+      .status-open {
+        color: #2196f3;
+        font-weight: bold;
+      }
+      .status-won {
+        color: #4caf50;
+        font-weight: bold;
+      }
+      .status-lost {
+        color: #f44336;
+        font-weight: bold;
+      }
+      .status-void {
+        color: orange;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Luc Habaraken Betting Dashboard</h1>
+    <button class="theme-toggle" onclick="toggleTheme()">
+      Toggle Light/Dark
+    </button>
+    <button class="shadow-toggle" onclick="toggleShadow()">
+      Toggle Shadow/Live
+    </button>
+
+    <div class="kpis">
+      <div class="kpi">
+        <h3>Bankroll</h3>
+        <p id="bankroll">0</p>
+      </div>
+      <div class="kpi">
+        <h3>ROI %</h3>
+        <p id="roi">0%</p>
+      </div>
+      <div class="kpi">
+        <h3>CLV %</h3>
+        <p id="clv">0%</p>
+      </div>
+      <div class="kpi">
+        <h3>Turnover</h3>
+        <p id="turnover">0</p>
+      </div>
+    </div>
+
+    <div class="charts">
+      <div class="chart-container"><canvas id="roiChart"></canvas></div>
+      <div class="chart-container"><canvas id="bankrollChart"></canvas></div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Timestamp</th>
+          <th>Sport</th>
+          <th>Market</th>
+          <th>Placed Odds</th>
+          <th>Closing Odds</th>
+          <th>CLV %</th>
+          <th>Probability</th>
+          <th>Edge</th>
+          <th>Stake</th>
+          <th>Result</th>
+        </tr>
+      </thead>
+      <tbody id="betsTable"></tbody>
+    </table>
+
+    <script>
+      let roiChart, bankrollChart;
+      let bankroll = 1000,
+        totalBets = 0,
+        bets = [],
+        shadowMode = false;
+
+      function randomBet() {
+        const sports = ["Football", "Tennis"];
+        const statuses = ["Open", "Won", "Lost", "Void"];
+        const sport = sports[Math.floor(Math.random() * sports.length)];
+        const status = statuses[Math.floor(Math.random() * statuses.length)];
+        const id = totalBets + 1;
+        const timestamp = new Date().toLocaleTimeString();
+        const market = sport + " Match";
+        const placedOdds = (Math.random() * 3 + 1).toFixed(2);
+        const closingOdds = (Math.random() * 3 + 1).toFixed(2);
+        const clv = (((closingOdds - placedOdds) / placedOdds) * 100).toFixed(
+          2
+        );
+        const probability = (Math.random() * 0.5 + 0.25).toFixed(2);
+        const edge = (Math.random() * 0.1).toFixed(2);
+        const stake = 50;
+        totalBets++;
+        return {
+          id,
+          timestamp,
+          sport,
+          market,
+          placedOdds,
+          closingOdds,
+          clv,
+          probability,
+          edge,
+          stake,
+          status,
+        };
+      }
+
+      function addBet() {
+        if (shadowMode) return;
+        const bet = randomBet();
+        bets.push(bet);
+        updateTable();
+        updateKPIs();
+        updateCharts();
+      }
+
+      function updateTable() {
+        const tbody = document.getElementById("betsTable");
+        tbody.innerHTML = "";
+        bets.forEach((b) => {
+          tbody.innerHTML += `<tr class="status-${b.status.toLowerCase()}"><td>${
+            b.id
+          }</td><td>${b.timestamp}</td><td>${b.sport}</td><td>${
+            b.market
+          }</td><td>${b.placedOdds}</td><td>${b.closingOdds}</td><td>${
+            b.clv
+          }</td><td>${b.probability}</td><td>${b.edge}</td><td>${
+            b.stake
+          }</td><td class="status-${b.status.toLowerCase()}">${
+            b.status
+          }</td></tr>`;
+        });
+      }
+
+      function updateKPIs() {
+        document.getElementById("bankroll").innerText = bankroll.toFixed(2);
+      }
+
+      function updateCharts() {
+        const labels = bets.map((b) => b.id);
+        const roiData = bets.map((b, i) => (i % 2 === 0 ? 5 : -3));
+        const bankrollData = bets.map((b, i) => bankroll + i * 5);
+
+        if (!roiChart) {
+          const ctx = document.getElementById("roiChart").getContext("2d");
+          roiChart = new Chart(ctx, {
+            type: "line",
+            data: {
+              labels,
+              datasets: [
+                {
+                  label: "ROI",
+                  data: roiData,
+                  borderColor: "#4caf50",
+                  backgroundColor: "rgba(76,175,80,0.3)",
+                  tension: 0.2,
+                },
+              ],
+            },
+          });
+        } else {
+          roiChart.data.labels = labels;
+          roiChart.data.datasets[0].data = roiData;
+          roiChart.update();
+        }
+
+        if (!bankrollChart) {
+          const ctx = document.getElementById("bankrollChart").getContext("2d");
+          bankrollChart = new Chart(ctx, {
+            type: "line",
+            data: {
+              labels,
+              datasets: [
+                {
+                  label: "Bankroll",
+                  data: bankrollData,
+                  borderColor: "#2196f3",
+                  backgroundColor: "rgba(33,150,243,0.3)",
+                  tension: 0.2,
+                },
+              ],
+            },
+          });
+        } else {
+          bankrollChart.data.labels = labels;
+          bankrollChart.data.datasets[0].data = bankrollData;
+          bankrollChart.update();
+        }
+      }
+
+      function toggleTheme() {
+        document.body.classList.toggle("light");
+      }
+      function toggleShadow() {
+        shadowMode = !shadowMode;
+      }
+
+      setInterval(addBet, 3000);
+    </script>
+  </body>
+</html>
