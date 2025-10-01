@@ -20,10 +20,11 @@
       h1 {
         text-align: center;
         margin: 10px 0;
-        transition: color 0.3s;
+        transition: color 0.3s, text-shadow 0.3s;
       }
       h1:hover {
         color: #4caf50;
+        text-shadow: 0 0 10px #4caf50;
         cursor: pointer;
       }
       .theme-toggle {
@@ -35,11 +36,12 @@
         border: none;
         border-radius: 5px;
         cursor: pointer;
-        transition: background 0.3s, transform 0.2s;
+        transition: background 0.3s, transform 0.2s, box-shadow 0.3s;
       }
       .theme-toggle:hover {
         background: #1976d2;
         transform: scale(1.05);
+        box-shadow: 0 0 15px #2196f3;
       }
       .kpis {
         display: flex;
@@ -54,11 +56,11 @@
         border-radius: 10px;
         text-align: center;
         min-width: 150px;
-        transition: background 0.3s, transform 0.3s;
+        transition: background 0.3s, transform 0.3s, box-shadow 0.3s;
       }
       .kpi:hover {
         transform: translateY(-5px);
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        box-shadow: 0 0 15px #4caf50;
       }
       body.light .kpi {
         background: #fff;
@@ -85,11 +87,11 @@
         padding: 10px;
         border-radius: 10px;
         background: #1e1e1e;
-        transition: background 0.3s, transform 0.3s;
+        transition: background 0.3s, transform 0.3s, box-shadow 0.3s;
       }
       .chart-container:hover {
         transform: translateY(-5px);
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        box-shadow: 0 0 20px #2196f3;
       }
       body.light .chart-container {
         background: #fff;
@@ -106,6 +108,11 @@
         padding: 6px;
         border-radius: 5px;
         border: 1px solid #555;
+        transition: box-shadow 0.3s;
+      }
+      .filters select:hover,
+      .filters input:hover {
+        box-shadow: 0 0 8px #4caf50;
       }
       .filters button {
         padding: 6px 12px;
@@ -114,6 +121,11 @@
         background: #4caf50;
         color: white;
         cursor: pointer;
+        transition: box-shadow 0.3s, transform 0.2s;
+      }
+      .filters button:hover {
+        box-shadow: 0 0 15px #4caf50;
+        transform: scale(1.05);
       }
       table {
         width: 100%;
@@ -125,7 +137,7 @@
         border: 1px solid #555;
         padding: 6px;
         text-align: center;
-        transition: background 0.3s;
+        transition: background 0.3s, box-shadow 0.3s;
         font-size: 0.85rem;
       }
       th {
@@ -134,6 +146,7 @@
       tr:hover {
         background: #444;
         cursor: pointer;
+        box-shadow: 0 0 10px #2196f3;
       }
       body.light th {
         background: #ccc;
@@ -163,6 +176,10 @@
         padding: 10px;
         background: #1e1e1e;
         border-radius: 10px;
+        transition: box-shadow 0.3s;
+      }
+      .errors:hover {
+        box-shadow: 0 0 15px red;
       }
       body.light .errors {
         background: #fff;
@@ -192,6 +209,10 @@
         <h3>Turnover</h3>
         <p id="turnover">0</p>
       </div>
+      <div class="kpi">
+        <h3>Drawdown</h3>
+        <p id="drawdown">0</p>
+      </div>
     </div>
 
     <div class="charts">
@@ -215,6 +236,14 @@
       </select>
       <input type="number" id="minEdgeFilter" placeholder="Min Edge %" />
       <button onclick="exportCSV()">Export CSV</button>
+      <label><input type="checkbox" id="shadowToggle" /> Shadow Mode</label>
+      <label
+        >Staking:
+        <select id="stakingMethod">
+          <option value="flat">Flat</option>
+          <option value="kelly">Kelly</option>
+        </select>
+      </label>
     </div>
 
     <table>
@@ -246,206 +275,236 @@
       let bankroll = 1000,
         turnover = 0,
         totalBets = 0,
-        bets = [];
+        bets = [],
+        peakBankroll = 1000;
 
-      // Generate a dummy bet
       function randomBet() {
-        const sports = ["Football", "Tennis"];
-        const statuses = ["Open", "Won", "Lost", "Void"];
-        const sport = sports[Math.floor(Math.random() * sports.length)];
-        const status = statuses[Math.floor(Math.random() * statuses.length)];
-        const id = totalBets + 1;
-        const timestamp = new Date().toLocaleTimeString();
-        const market = sport + " Match";
-        const placedOdds = (Math.random() * 3 + 1).toFixed(2);
-        const closingOdds = (Math.random() * 3 + 1).toFixed(2);
-        const clv = (((closingOdds - placedOdds) / placedOdds) * 100).toFixed(
-          2
-        );
-        const probability = (Math.random() * 0.5 + 0.25).toFixed(2);
-        const edge = (Math.random() * 0.1).toFixed(2);
-        const stake = (Math.random() * 100 + 10).toFixed(2);
-        totalBets++;
-        return {
-          id,
-          timestamp,
-          sport,
-          market,
-          placedOdds,
-          closingOdds,
-          clv,
-          probability,
-          edge,
-          stake,
-          status,
-        };
-      }
-
-      // Add bet
-      function addBet() {
-        bets.push(randomBet());
-        updateTable();
-        updateKPIs();
-        updateCharts();
-      }
-
-      // Update table with filters
-      function updateTable() {
-        const tbody = document.getElementById("betsTable");
-        tbody.innerHTML = "";
-        const sportFilter = document.getElementById("sportFilter").value;
-        const statusFilter = document.getElementById("statusFilter").value;
-        const minEdge =
-          parseFloat(document.getElementById("minEdgeFilter").value) || 0;
-        const filtered = bets.filter((b) => {
-          return (
-            (sportFilter === "" || b.sport === sportFilter) &&
-            (statusFilter === "" || b.status === statusFilter) &&
-            b.edge * 100 >= minEdge
+        try {
+          const sports = ["Football", "Tennis"];
+          const statuses = ["Open", "Won", "Lost", "Void"];
+          const sport = sports[Math.floor(Math.random() * sports.length)];
+          const status = statuses[Math.floor(Math.random() * statuses.length)];
+          const id = totalBets + 1;
+          const timestamp = new Date().toLocaleTimeString();
+          const market = sport + " Match";
+          const placedOdds = (Math.random() * 3 + 1).toFixed(2);
+          const closingOdds = (Math.random() * 3 + 1).toFixed(2);
+          const clv = (((closingOdds - placedOdds) / placedOdds) * 100).toFixed(
+            2
           );
-        });
-        filtered.forEach((b) => {
-          tbody.innerHTML += `<tr>
-      <td>${b.id}</td>
-      <td>${b.timestamp}</td>
-      <td>${b.sport}</td>
-      <td>${b.market}</td>
-      <td>${b.placedOdds}</td>
-      <td>${b.closingOdds}</td>
-      <td>${b.clv}%</td>
-      <td>${(b.probability * 100).toFixed(0)}%</td>
-      <td>${(b.edge * 100).toFixed(2)}%</td>
-      <td>${b.stake}</td>
-      <td class="status-${b.status.toLowerCase()}">${b.status}</td>
-    </tr>`;
-        });
+          const probability = (Math.random() * 0.5 + 0.25).toFixed(2);
+          const edge = (Math.random() * 0.1).toFixed(2);
+          let stake;
+          const method = document.getElementById("stakingMethod").value;
+          if (method === "flat") stake = 50; // flat stake
+          else stake = Math.max(10, ((bankroll * edge) / 1).toFixed(2)); // Kelly approx
+          totalBets++;
+          return {
+            id,
+            timestamp,
+            sport,
+            market,
+            placedOdds,
+            closingOdds,
+            clv,
+            probability,
+            edge,
+            stake,
+            status,
+          };
+        } catch (e) {
+          logError("Error generating bet: " + e);
+        }
       }
 
-      // Update KPIs
+      function addBet() {
+        try {
+          const shadow = document.getElementById("shadowToggle").checked;
+          const bet = randomBet();
+          bets.push(bet);
+          if (!shadow) updateBankroll(bet);
+          updateTable();
+          updateKPIs();
+          updateCharts();
+        } catch (e) {
+          logError("Error adding bet: " + e);
+        }
+      }
+
+      function updateBankroll(bet) {
+        try {
+          if (bet.status === "Won")
+            bankroll += bet.stake * (bet.placedOdds - 1);
+          else if (bet.status === "Lost") bankroll -= bet.stake;
+          if (bankroll > peakBankroll) peakBankroll = bankroll;
+        } catch (e) {
+          logError("Error updating bankroll: " + e);
+        }
+      }
+
+      function updateTable() {
+        try {
+          const tbody = document.getElementById("betsTable");
+          tbody.innerHTML = "";
+          const sportFilter = document.getElementById("sportFilter").value;
+          const statusFilter = document.getElementById("statusFilter").value;
+          const minEdge =
+            parseFloat(document.getElementById("minEdgeFilter").value) || 0;
+          const filtered = bets.filter(
+            (b) =>
+              (sportFilter === "" || b.sport === sportFilter) &&
+              (statusFilter === "" || b.status === statusFilter) &&
+              b.edge * 100 >= minEdge
+          );
+          filtered.forEach((b) => {
+            tbody.innerHTML += `<tr class="status-${b.status.toLowerCase()}">
+            <td>${b.id}</td><td>${b.timestamp}</td><td>${b.sport}</td><td>${
+              b.market
+            }</td>
+            <td>${b.placedOdds}</td><td>${b.closingOdds}</td><td>${b.clv}%</td>
+            <td>${(b.probability * 100).toFixed(0)}%</td><td>${(
+              b.edge * 100
+            ).toFixed(2)}%</td>
+            <td>${b.stake}</td>
+            <td class="status-${b.status.toLowerCase()}">${b.status}</td>
+          </tr>`;
+          });
+        } catch (e) {
+          logError("Error updating table: " + e);
+        }
+      }
+
       function updateKPIs() {
-        turnover = bets.reduce((s, b) => s + parseFloat(b.stake), 0);
-        bankroll =
-          1000 +
-          bets.reduce((s, b) => {
-            if (b.status === "Won") return s + b.stake * (b.placedOdds - 1);
-            if (b.status === "Lost") return s - b.stake;
-            return s;
-          }, 0);
-        const roi = (((bankroll - 1000) / turnover) * 100).toFixed(2);
-        const avgCLV = (
-          bets.reduce((s, b) => s + parseFloat(b.clv), 0) / bets.length || 0
-        ).toFixed(2);
-        document.getElementById("bankroll").textContent = bankroll.toFixed(2);
-        document.getElementById("roi").textContent = roi + "%";
-        document.getElementById("clv").textContent = avgCLV + "%";
-        document.getElementById("turnover").textContent = turnover.toFixed(2);
+        try {
+          turnover = bets.reduce((s, b) => s + parseFloat(b.stake), 0);
+          const roi = (((bankroll - 1000) / turnover) * 100).toFixed(2);
+          const avgCLV = (
+            bets.reduce((s, b) => s + parseFloat(b.clv), 0) / bets.length || 0
+          ).toFixed(2);
+          const drawdown = (peakBankroll - bankroll).toFixed(2);
+          document.getElementById("bankroll").textContent = bankroll.toFixed(2);
+          document.getElementById("roi").textContent = roi + "%";
+          document.getElementById("clv").textContent = avgCLV + "%";
+          document.getElementById("turnover").textContent = turnover.toFixed(2);
+          document.getElementById("drawdown").textContent = drawdown;
+        } catch (e) {
+          logError("Error updating KPIs: " + e);
+        }
       }
+
       function updateCharts() {
-        const labels = bets.map((b) => b.id);
-        const roiData = bets.map(() =>
-          (((bankroll - 1000) / turnover) * 100).toFixed(2)
-        );
-        const bankrollData = bets.map(() => bankroll.toFixed(2));
-        const edgeData = bets.map((b) => (b.edge * 100).toFixed(2));
-        const edgeLabels = bets.map((b) => b.market);
-
-        const commonOptions = {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { labels: { color: getColor() } } },
-          scales: {
-            x: { ticks: { color: getColor() } },
-            y: { ticks: { color: getColor() } },
-          },
-        };
-
-        if (!roiChart) {
-          roiChart = new Chart(document.getElementById("roiChart"), {
-            type: "line",
-            data: {
-              labels,
-              datasets: [
-                {
-                  label: "ROI %",
-                  data: roiData,
-                  borderColor: "#4caf50",
-                  fill: true,
-                },
-              ],
+        try {
+          const labels = bets.map((b) => b.id);
+          const roiData = bets.map(() =>
+            (((bankroll - 1000) / turnover) * 100).toFixed(2)
+          );
+          const bankrollData = bets.map(() => bankroll.toFixed(2));
+          const edgeData = bets.map((b) => (b.edge * 100).toFixed(2));
+          const edgeLabels = bets.map((b) => b.market);
+          const commonOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: getColor() } } },
+            scales: {
+              x: { ticks: { color: getColor() } },
+              y: { ticks: { color: getColor() } },
             },
-            options: commonOptions,
-          });
-        } else {
-          roiChart.data.labels = labels;
-          roiChart.data.datasets[0].data = roiData;
-          roiChart.update();
-        }
-
-        if (!bankrollChart) {
-          bankrollChart = new Chart(document.getElementById("bankrollChart"), {
-            type: "line",
-            data: {
-              labels,
-              datasets: [
-                {
-                  label: "Bankroll",
-                  data: bankrollData,
-                  borderColor: "#2196f3",
-                  fill: true,
+          };
+          if (!roiChart)
+            roiChart = new Chart(document.getElementById("roiChart"), {
+              type: "line",
+              data: {
+                labels,
+                datasets: [
+                  {
+                    label: "ROI %",
+                    data: roiData,
+                    borderColor: "#4caf50",
+                    fill: true,
+                  },
+                ],
+              },
+              options: commonOptions,
+            });
+          else {
+            roiChart.data.labels = labels;
+            roiChart.data.datasets[0].data = roiData;
+            roiChart.update();
+          }
+          if (!bankrollChart)
+            bankrollChart = new Chart(
+              document.getElementById("bankrollChart"),
+              {
+                type: "line",
+                data: {
+                  labels,
+                  datasets: [
+                    {
+                      label: "Bankroll",
+                      data: bankrollData,
+                      borderColor: "#2196f3",
+                      fill: true,
+                    },
+                  ],
                 },
-              ],
-            },
-            options: commonOptions,
-          });
-        } else {
-          bankrollChart.data.labels = labels;
-          bankrollChart.data.datasets[0].data = bankrollData;
-          bankrollChart.update();
-        }
-
-        if (!edgePieChart) {
-          edgePieChart = new Chart(document.getElementById("edgePieChart"), {
-            type: "pie",
-            data: {
-              labels: edgeLabels,
-              datasets: [
-                {
-                  label: "Edge %",
-                  data: edgeData,
-                  backgroundColor: edgeLabels.map(() => randomColor()),
-                },
-              ],
-            },
-            options: { plugins: { legend: { labels: { color: getColor() } } } },
-          });
-        } else {
-          edgePieChart.data.labels = edgeLabels;
-          edgePieChart.data.datasets[0].data = edgeData;
-          edgePieChart.update();
+                options: commonOptions,
+              }
+            );
+          else {
+            bankrollChart.data.labels = labels;
+            bankrollChart.data.datasets[0].data = bankrollData;
+            bankrollChart.update();
+          }
+          if (!edgePieChart)
+            edgePieChart = new Chart(document.getElementById("edgePieChart"), {
+              type: "pie",
+              data: {
+                labels: edgeLabels,
+                datasets: [
+                  {
+                    label: "Edge %",
+                    data: edgeData,
+                    backgroundColor: edgeLabels.map(() => randomColor()),
+                  },
+                ],
+              },
+              options: {
+                plugins: { legend: { labels: { color: getColor() } } },
+              },
+            });
+          else {
+            edgePieChart.data.labels = edgeLabels;
+            edgePieChart.data.datasets[0].data = edgeData;
+            edgePieChart.update();
+          }
+        } catch (e) {
+          logError("Error updating charts: " + e);
         }
       }
 
-      // CSV export
       function exportCSV() {
-        let csv =
-          "ID,Timestamp,Sport,Market,Placed Odds,Closing Odds,CLV %,Probability,Edge %,Stake,Result\n";
-        bets.forEach((b) => {
-          csv += `${b.id},${b.timestamp},${b.sport},${b.market},${
-            b.placedOdds
-          },${b.closingOdds},${b.clv},${(b.probability * 100).toFixed(0)},${(
-            b.edge * 100
-          ).toFixed(2)},${b.stake},${b.status}\n`;
-        });
-        const blob = new Blob([csv], { type: "text/csv" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "bets.csv";
-        a.click();
-        URL.revokeObjectURL(url);
+        try {
+          let csv =
+            "ID,Timestamp,Sport,Market,Placed Odds,Closing Odds,CLV %,Probability,Edge %,Stake,Result\n";
+          bets.forEach((b) => {
+            csv += `${b.id},${b.timestamp},${b.sport},${b.market},${
+              b.placedOdds
+            },${b.closingOdds},${b.clv},${(b.probability * 100).toFixed(0)},${(
+              b.edge * 100
+            ).toFixed(2)},${b.stake},${b.status}\n`;
+          });
+          const blob = new Blob([csv], { type: "text/csv" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "bets.csv";
+          a.click();
+          URL.revokeObjectURL(url);
+        } catch (e) {
+          logError("Error exporting CSV: " + e);
+        }
       }
 
-      // Utility functions
       function getColor() {
         return document.body.classList.contains("light") ? "#222" : "#eee";
       }
@@ -454,6 +513,12 @@
       }
       function toggleTheme() {
         document.body.classList.toggle("light");
+      }
+      function logError(msg) {
+        const ul = document.getElementById("errorLogs");
+        const li = document.createElement("li");
+        li.textContent = msg;
+        ul.appendChild(li);
       }
 
       // Auto-generate a bet every 3 seconds

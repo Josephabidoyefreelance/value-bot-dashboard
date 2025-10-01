@@ -1,0 +1,5 @@
+[
+  {"match": "Team A vs Team B", "odds_open": 2.0, "odds_close": 1.8, "bet_amount": 10, "result": "win"},
+  {"match": "Team C vs Team D", "odds_open": 1.5, "odds_close": 1.6, "bet_amount": 10, "result": "lose"},
+  {"match": "Team E vs Team F", "odds_open": 2.5, "odds_close": 2.8, "bet_amount": 10, "result": "win"}
+]
