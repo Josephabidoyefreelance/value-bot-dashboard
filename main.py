@@ -69,6 +69,11 @@ def start_background_tasks():
     thread.start()
 
 # Routes
+@app.get("/")
+def read_root(request: Request):
+    # Redirect root to dashboard or show a message
+    return templates.TemplateResponse("bets.html", {"request": request, "bets": []})
+
 @app.get("/bets")
 def get_bets():
     cursor.execute("SELECT * FROM bets ORDER BY id DESC")
