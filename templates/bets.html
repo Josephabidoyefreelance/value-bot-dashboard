@@ -17,7 +17,6 @@
         background: #f4f4f4;
         color: #222;
       }
-
       h1 {
         text-align: center;
         margin: 10px 0;
@@ -27,7 +26,6 @@
         color: #4caf50;
         cursor: pointer;
       }
-
       .theme-toggle {
         display: block;
         margin: 0 auto 20px auto;
@@ -43,7 +41,6 @@
         background: #1976d2;
         transform: scale(1.05);
       }
-
       .kpis {
         display: flex;
         justify-content: space-around;
@@ -74,7 +71,6 @@
         margin: 5px 0 0;
         font-size: 1rem;
       }
-
       .charts {
         display: flex;
         justify-content: space-between;
@@ -98,7 +94,6 @@
       body.light .chart-container {
         background: #fff;
       }
-
       .filters {
         margin: 15px 0;
         display: flex;
@@ -120,7 +115,6 @@
         color: white;
         cursor: pointer;
       }
-
       table {
         width: 100%;
         border-collapse: collapse;
@@ -148,7 +142,6 @@
       body.light tr:hover {
         background: #ddd;
       }
-
       .status-open {
         color: #2196f3;
         font-weight: bold;
@@ -165,7 +158,6 @@
         color: orange;
         font-weight: bold;
       }
-
       .errors {
         margin-top: 20px;
         padding: 10px;
@@ -183,7 +175,6 @@
       Toggle Light/Dark
     </button>
 
-    <!-- KPIs -->
     <div class="kpis">
       <div class="kpi">
         <h3>Bankroll</h3>
@@ -203,14 +194,12 @@
       </div>
     </div>
 
-    <!-- Charts -->
     <div class="charts">
       <div class="chart-container"><canvas id="roiChart"></canvas></div>
       <div class="chart-container"><canvas id="bankrollChart"></canvas></div>
       <div class="chart-container"><canvas id="edgePieChart"></canvas></div>
     </div>
 
-    <!-- Filters -->
     <div class="filters">
       <select id="sportFilter">
         <option value="">All Sports</option>
@@ -228,7 +217,6 @@
       <button onclick="exportCSV()">Export CSV</button>
     </div>
 
-    <!-- Bets Table -->
     <table>
       <thead>
         <tr>
@@ -248,7 +236,6 @@
       <tbody id="betsTable"></tbody>
     </table>
 
-    <!-- Error Logs -->
     <div class="errors">
       <h3>Error Logs</h3>
       <ul id="errorLogs"></ul>
@@ -256,15 +243,17 @@
 
     <script>
       let roiChart, bankrollChart, edgePieChart;
-      let bankroll = 1000;
-      let turnover = 0;
-      let totalBets = 0;
-      let bets = [];
+      let bankroll = 1000,
+        turnover = 0,
+        totalBets = 0,
+        bets = [];
 
+      // Generate a dummy bet
       function randomBet() {
         const sports = ["Football", "Tennis"];
         const statuses = ["Open", "Won", "Lost", "Void"];
         const sport = sports[Math.floor(Math.random() * sports.length)];
+        const status = statuses[Math.floor(Math.random() * statuses.length)];
         const id = totalBets + 1;
         const timestamp = new Date().toLocaleTimeString();
         const market = sport + " Match";
@@ -276,8 +265,7 @@
         const probability = (Math.random() * 0.5 + 0.25).toFixed(2);
         const edge = (Math.random() * 0.1).toFixed(2);
         const stake = (Math.random() * 100 + 10).toFixed(2);
-        const status = statuses[Math.floor(Math.random() * statuses.length)];
-
+        totalBets++;
         return {
           id,
           timestamp,
@@ -293,63 +281,71 @@
         };
       }
 
+      // Add bet
       function addBet() {
-        const bet = randomBet();
-        bets.push(bet);
-        totalBets++;
+        bets.push(randomBet());
         updateTable();
         updateKPIs();
         updateCharts();
       }
 
+      // Update table with filters
       function updateTable() {
-        const tableBody = document.getElementById("betsTable");
-        tableBody.innerHTML = "";
-        bets.forEach((bet) => {
-          tableBody.innerHTML += `
-            <tr>
-              <td>${bet.id}</td>
-              <td>${bet.timestamp}</td>
-              <td>${bet.sport}</td>
-              <td>${bet.market}</td>
-              <td>${bet.placedOdds}</td>
-              <td>${bet.closingOdds}</td>
-              <td>${bet.clv}%</td>
-              <td>${(bet.probability * 100).toFixed(0)}%</td>
-              <td>${(bet.edge * 100).toFixed(2)}%</td>
-              <td>${bet.stake}</td>
-              <td class="status-${bet.status.toLowerCase()}">${bet.status}</td>
-            </tr>
-          `;
+        const tbody = document.getElementById("betsTable");
+        tbody.innerHTML = "";
+        const sportFilter = document.getElementById("sportFilter").value;
+        const statusFilter = document.getElementById("statusFilter").value;
+        const minEdge =
+          parseFloat(document.getElementById("minEdgeFilter").value) || 0;
+        const filtered = bets.filter((b) => {
+          return (
+            (sportFilter === "" || b.sport === sportFilter) &&
+            (statusFilter === "" || b.status === statusFilter) &&
+            b.edge * 100 >= minEdge
+          );
+        });
+        filtered.forEach((b) => {
+          tbody.innerHTML += `<tr>
+      <td>${b.id}</td>
+      <td>${b.timestamp}</td>
+      <td>${b.sport}</td>
+      <td>${b.market}</td>
+      <td>${b.placedOdds}</td>
+      <td>${b.closingOdds}</td>
+      <td>${b.clv}%</td>
+      <td>${(b.probability * 100).toFixed(0)}%</td>
+      <td>${(b.edge * 100).toFixed(2)}%</td>
+      <td>${b.stake}</td>
+      <td class="status-${b.status.toLowerCase()}">${b.status}</td>
+    </tr>`;
         });
       }
 
+      // Update KPIs
       function updateKPIs() {
-        turnover = bets.reduce((sum, b) => sum + parseFloat(b.stake), 0);
+        turnover = bets.reduce((s, b) => s + parseFloat(b.stake), 0);
         bankroll =
           1000 +
-          bets.reduce((sum, b) => {
-            if (b.status === "Won") return sum + b.stake * (b.placedOdds - 1);
-            if (b.status === "Lost") return sum - b.stake;
-            return sum;
+          bets.reduce((s, b) => {
+            if (b.status === "Won") return s + b.stake * (b.placedOdds - 1);
+            if (b.status === "Lost") return s - b.stake;
+            return s;
           }, 0);
         const roi = (((bankroll - 1000) / turnover) * 100).toFixed(2);
         const avgCLV = (
-          bets.reduce((sum, b) => sum + parseFloat(b.clv), 0) / bets.length
+          bets.reduce((s, b) => s + parseFloat(b.clv), 0) / bets.length || 0
         ).toFixed(2);
-
         document.getElementById("bankroll").textContent = bankroll.toFixed(2);
         document.getElementById("roi").textContent = roi + "%";
         document.getElementById("clv").textContent = avgCLV + "%";
         document.getElementById("turnover").textContent = turnover.toFixed(2);
       }
-
       function updateCharts() {
         const labels = bets.map((b) => b.id);
-        const roiData = bets.map((b, i) =>
+        const roiData = bets.map(() =>
           (((bankroll - 1000) / turnover) * 100).toFixed(2)
         );
-        const bankrollData = bets.map((b, i) => bankroll.toFixed(2));
+        const bankrollData = bets.map(() => bankroll.toFixed(2));
         const edgeData = bets.map((b) => (b.edge * 100).toFixed(2));
         const edgeLabels = bets.map((b) => b.market);
 
@@ -429,6 +425,7 @@
         }
       }
 
+      // CSV export
       function exportCSV() {
         let csv =
           "ID,Timestamp,Sport,Market,Placed Odds,Closing Odds,CLV %,Probability,Edge %,Stake,Result\n";
@@ -448,18 +445,19 @@
         URL.revokeObjectURL(url);
       }
 
+      // Utility functions
       function getColor() {
         return document.body.classList.contains("light") ? "#222" : "#eee";
       }
       function randomColor() {
-        return `hsl(${Math.floor(Math.random() * 360)}, 70%, 50%)`;
+        return `hsl(${Math.floor(Math.random() * 360)},70%,50%)`;
       }
       function toggleTheme() {
         document.body.classList.toggle("light");
       }
 
-      // Start simulation
-      setInterval(addBet, 2000);
+      // Auto-generate a bet every 3 seconds
+      setInterval(addBet, 3000);
     </script>
   </body>
 </html>
